@@ -191,11 +191,12 @@
         <module>legend-engine-xt-sql-protocol</module>
         <module>legend-engine-xt-sql-compiler</module>
         <module>legend-engine-xt-sql-grammar-integration</module>
+        <module>legend-engine-xt-sql-query</module>
     </modules>
 
     <properties>
         <!-- Legend -->
-        <legend.pure.version>3.7.0</legend.pure.version>
+        <legend.pure.version>3.7.1</legend.pure.version>
         <legend.shared.version>0.22.5</legend.shared.version>
 
         <!-- SONAR -->
@@ -1370,6 +1371,11 @@
             <dependency>
                 <groupId>org.finos.legend.engine</groupId>
                 <artifactId>legend-engine-xt-sql-pure-metamodel</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-xt-sql-query</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <!-- ENGINE -->
