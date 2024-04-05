@@ -15,21 +15,27 @@
 
 package org.finos.legend.engine.plan.execution.stores.elasticsearch.v7.plugin;
 
-import org.eclipse.collections.api.list.MutableList;
 import org.finos.legend.engine.plan.execution.nodes.state.ExecutionState;
 import org.finos.legend.engine.plan.execution.result.Result;
 import org.finos.legend.engine.plan.execution.stores.StoreExecutionState;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.nodes.ExecutionNodeVisitor;
-import org.finos.legend.engine.shared.core.identity.factory.IdentityFactoryProvider;
-import org.pac4j.core.profile.CommonProfile;
+import org.finos.legend.engine.shared.core.identity.Identity;
 
 public class ElasticsearchV7StoreExecutionState implements StoreExecutionState
 {
     private final ElasticsearchV7StoreState state;
 
-    public ElasticsearchV7StoreExecutionState(ElasticsearchV7StoreState state)
+    private final ElasticsearchV7StoreExecutorConfiguration elasticsearchV7StoreExecutorConfiguration;
+
+    public ElasticsearchV7StoreExecutionState(ElasticsearchV7StoreState state, ElasticsearchV7StoreExecutorConfiguration elasticsearchV7StoreExecutorConfiguration)
     {
         this.state = state;
+        this.elasticsearchV7StoreExecutorConfiguration = elasticsearchV7StoreExecutorConfiguration;
+    }
+
+    public ElasticsearchV7StoreExecutorConfiguration getStoreExecutionConfiguration()
+    {
+        return this.elasticsearchV7StoreExecutorConfiguration;
     }
 
     @Override
@@ -39,9 +45,9 @@ public class ElasticsearchV7StoreExecutionState implements StoreExecutionState
     }
 
     @Override
-    public ExecutionNodeVisitor<Result> getVisitor(MutableList<CommonProfile> profiles, ExecutionState executionState)
+    public ExecutionNodeVisitor<Result> getVisitor(Identity identity, ExecutionState executionState)
     {
-        return new ElasticsearchV7ExecutionNodeExecutor(IdentityFactoryProvider.getInstance().makeIdentity(profiles), executionState, this.state);
+        return new ElasticsearchV7ExecutionNodeExecutor(identity, executionState, this.state);
     }
 
     @Override

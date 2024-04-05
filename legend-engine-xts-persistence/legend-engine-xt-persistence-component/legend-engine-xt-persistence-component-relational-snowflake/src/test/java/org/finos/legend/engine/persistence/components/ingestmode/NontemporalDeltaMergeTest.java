@@ -77,7 +77,7 @@ public class NontemporalDeltaMergeTest extends NontemporalDeltaTest
         List<String> metaIngestSqlList = operations.metadataIngestSql();
 
         String mergeSql = "MERGE INTO \"mydb\".\"main\" as sink " +
-                "USING \"mydb\".\"staging_legend_persistence_temp_staging\" as stage " +
+                "USING \"mydb\".\"staging_temp_staging_lp_yosulf\" as stage " +
                 "ON (sink.\"id\" = stage.\"id\") AND (sink.\"name\" = stage.\"name\") " +
                 "WHEN MATCHED AND sink.\"digest\" <> stage.\"digest\" " +
                 "THEN UPDATE SET " +
@@ -107,7 +107,7 @@ public class NontemporalDeltaMergeTest extends NontemporalDeltaTest
     public void verifyNonTemporalDeltaNoAuditingNoDedupAllVersion(List<GeneratorResult> operations, List<DataSplitRange> dataSplitRanges)
     {
         String mergeSql = "MERGE INTO \"mydb\".\"main\" as sink " +
-                "USING (SELECT stage.\"id\",stage.\"name\",stage.\"amount\",stage.\"biz_date\",stage.\"digest\" FROM \"mydb\".\"staging_legend_persistence_temp_staging\" as stage " +
+                "USING (SELECT stage.\"id\",stage.\"name\",stage.\"amount\",stage.\"biz_date\",stage.\"digest\" FROM \"mydb\".\"staging_temp_staging_lp_yosulf\" as stage " +
                 "WHERE (stage.\"data_split\" >= '{DATA_SPLIT_LOWER_BOUND_PLACEHOLDER}') AND (stage.\"data_split\" <= '{DATA_SPLIT_UPPER_BOUND_PLACEHOLDER}')) " +
                 "as stage ON (sink.\"id\" = stage.\"id\") AND (sink.\"name\" = stage.\"name\") " +
                 "WHEN MATCHED AND sink.\"digest\" <> stage.\"digest\" " +
@@ -161,7 +161,7 @@ public class NontemporalDeltaMergeTest extends NontemporalDeltaTest
     public void verifyNonTemporalDeltaWithWithAuditingFailOnDupsAllVersion(List<GeneratorResult> operations, List<DataSplitRange> dataSplitRanges)
     {
         String mergeSql = "MERGE INTO \"mydb\".\"main\" as sink " +
-                "USING (SELECT stage.\"id\",stage.\"name\",stage.\"amount\",stage.\"biz_date\",stage.\"digest\" FROM \"mydb\".\"staging_legend_persistence_temp_staging\" as stage " +
+                "USING (SELECT stage.\"id\",stage.\"name\",stage.\"amount\",stage.\"biz_date\",stage.\"digest\" FROM \"mydb\".\"staging_temp_staging_lp_yosulf\" as stage " +
                 "WHERE (stage.\"data_split\" >= '{DATA_SPLIT_LOWER_BOUND_PLACEHOLDER}') AND (stage.\"data_split\" <= '{DATA_SPLIT_UPPER_BOUND_PLACEHOLDER}')) " +
                 "as stage ON (sink.\"id\" = stage.\"id\") AND (sink.\"name\" = stage.\"name\") " +
                 "WHEN MATCHED AND sink.\"digest\" <> stage.\"digest\" " +
@@ -202,14 +202,14 @@ public class NontemporalDeltaMergeTest extends NontemporalDeltaTest
                 "sink.\"biz_date\" = stage.\"biz_date\"," +
                 "sink.\"digest\" = stage.\"digest\"," +
                 "sink.\"batch_id\" = (SELECT COALESCE(MAX(batch_metadata.\"table_batch_id\"),0)+1 FROM batch_metadata as batch_metadata WHERE UPPER(batch_metadata.\"table_name\") = 'MAIN') " +
-                "WHEN NOT MATCHED THEN " +
+                "WHEN NOT MATCHED AND stage.\"delete_indicator\" NOT IN ('yes','1','true') THEN " +
                 "INSERT (\"id\", \"name\", \"amount\", \"biz_date\", \"digest\", \"batch_id\") " +
                 "VALUES (stage.\"id\",stage.\"name\",stage.\"amount\",stage.\"biz_date\",stage.\"digest\",(SELECT COALESCE(MAX(batch_metadata.\"table_batch_id\"),0)+1 FROM batch_metadata as batch_metadata WHERE UPPER(batch_metadata.\"table_name\") = 'MAIN'))";
 
         Assertions.assertEquals(AnsiTestArtifacts.expectedBaseTablePlusDigestCreateQuery, preActionsSqlList.get(0));
         Assertions.assertEquals(getExpectedMetadataTableCreateQuery(), preActionsSqlList.get(1));
         Assertions.assertEquals(mergeSql, milestoningSqlList.get(0));
-        Assertions.assertEquals(getExpectedMetadataTableIngestQuery(), metaIngestSqlList.get(0));
+        Assertions.assertEquals(getExpectedMetadataTableIngestQueryWithAdditionalMetadata(), metaIngestSqlList.get(0));
 
         // Stats
         Assertions.assertEquals(incomingRecordCount, operations.postIngestStatisticsSql().get(StatisticName.INCOMING_RECORD_COUNT));
@@ -290,7 +290,7 @@ public class NontemporalDeltaMergeTest extends NontemporalDeltaTest
         Assertions.assertEquals(AnsiTestArtifacts.expectedBaseTablePlusDigestCreateQuery, preActionsSqlList.get(0));
         Assertions.assertEquals(getExpectedMetadataTableCreateQuery(), preActionsSqlList.get(1));
         Assertions.assertEquals(mergeSql, milestoningSqlList.get(0));
-        Assertions.assertEquals(getExpectedMetadataTableIngestQueryWithStagingFilters("{\"biz_date\":{\"LT\":\"2020-01-03\",\"GT\":\"2020-01-01\"}}"), metaIngestSqlList.get(0));
+        Assertions.assertEquals(getExpectedMetadataTableIngestQueryWithStagingFiltersAndAdditionalMetadata("{\"staging_filters\":{\"biz_date\":{\"LT\":\"2020-01-03\",\"GT\":\"2020-01-01\"}}}"), metaIngestSqlList.get(0));
 
         String incomingRecordCount = "SELECT COUNT(*) as \"incomingRecordCount\" FROM \"mydb\".\"staging\" as stage WHERE (stage.\"biz_date\" > '2020-01-01') AND (stage.\"biz_date\" < '2020-01-03')";
         // Stats
@@ -325,7 +325,7 @@ public class NontemporalDeltaMergeTest extends NontemporalDeltaTest
         Assertions.assertEquals(AnsiTestArtifacts.expectedBaseTablePlusDigestCreateQuery, preActionsSqlList.get(0));
         Assertions.assertEquals(getExpectedMetadataTableCreateQuery(), preActionsSqlList.get(1));
         Assertions.assertEquals(mergeSql, milestoningSqlList.get(0));
-        Assertions.assertEquals(getExpectedMetadataTableIngestQuery(), metaIngestSqlList.get(0));
+        Assertions.assertEquals(getExpectedMetadataTableIngestQueryWithAdditionalMetadata(), metaIngestSqlList.get(0));
 
         String incomingRecordCount = "SELECT COUNT(*) as \"incomingRecordCount\" FROM \"mydb\".\"staging\" as stage WHERE (stage.\"biz_date\" > '2020-01-10') OR ((stage.\"biz_date\" > '2020-01-01') AND (stage.\"biz_date\" < '2020-01-05'))";
         // Stats
@@ -343,7 +343,7 @@ public class NontemporalDeltaMergeTest extends NontemporalDeltaTest
 
         String mergeSql = "MERGE INTO \"mydb\".\"main\" as sink " +
             "USING " +
-            "\"mydb\".\"staging_legend_persistence_temp_staging\" as stage " +
+            "\"mydb\".\"staging_temp_staging_lp_yosulf\" as stage " +
             "ON (sink.\"id\" = stage.\"id\") AND (sink.\"name\" = stage.\"name\") " +
             "WHEN MATCHED AND stage.\"version\" > sink.\"version\" " +
             "THEN UPDATE SET sink.\"id\" = stage.\"id\",sink.\"name\" = stage.\"name\",sink.\"amount\" = stage.\"amount\",sink.\"biz_date\" = stage.\"biz_date\",sink.\"digest\" = stage.\"digest\",sink.\"version\" = stage.\"version\"," +
@@ -353,7 +353,7 @@ public class NontemporalDeltaMergeTest extends NontemporalDeltaTest
         Assertions.assertEquals(AnsiTestArtifacts.expectedBaseTablePlusDigestPlusVersionCreateQuery, preActionsSqlList.get(0));
         Assertions.assertEquals(getExpectedMetadataTableCreateQuery(), preActionsSqlList.get(1));
         Assertions.assertEquals(mergeSql, milestoningSqlList.get(0));
-        Assertions.assertEquals(getExpectedMetadataTableIngestQueryWithStagingFilters("{\"snapshot_id\":{\"GT\":18972}}"), metaIngestSqlList.get(0));
+        Assertions.assertEquals(getExpectedMetadataTableIngestQueryWithStagingFilters("{\"staging_filters\":{\"snapshot_id\":{\"GT\":18972}}}"), metaIngestSqlList.get(0));
 
         String incomingRecordCount = "SELECT COUNT(*) as \"incomingRecordCount\" FROM \"mydb\".\"staging\" as stage WHERE stage.\"snapshot_id\" > 18972";
         // Stats
@@ -381,7 +381,7 @@ public class NontemporalDeltaMergeTest extends NontemporalDeltaTest
         Assertions.assertEquals(AnsiTestArtifacts.expectedBaseTablePlusDigestPlusVersionCreateQuery, preActionsSqlList.get(0));
         Assertions.assertEquals(getExpectedMetadataTableCreateQuery(), preActionsSqlList.get(1));
         Assertions.assertEquals(mergeSql, milestoningSqlList.get(0));
-        Assertions.assertEquals(getExpectedMetadataTableIngestQueryWithStagingFilters("{\"snapshot_id\":{\"GT\":18972}}"), metaIngestSqlList.get(0));
+        Assertions.assertEquals(getExpectedMetadataTableIngestQueryWithStagingFilters("{\"staging_filters\":{\"snapshot_id\":{\"GT\":18972}}}"), metaIngestSqlList.get(0));
 
         String incomingRecordCount = "SELECT COUNT(*) as \"incomingRecordCount\" FROM \"mydb\".\"staging\" as stage WHERE stage.\"snapshot_id\" > 18972";
         // Stats
@@ -426,7 +426,7 @@ public class NontemporalDeltaMergeTest extends NontemporalDeltaTest
 
         String mergeSql = "MERGE INTO \"MYDB\".\"MAIN\" as sink " +
             "USING " +
-            "\"MYDB\".\"STAGING_LEGEND_PERSISTENCE_TEMP_STAGING\" as stage " +
+            "\"MYDB\".\"STAGING_TEMP_STAGING_LP_YOSULF\" as stage " +
             "ON (sink.\"ID\" = stage.\"ID\") AND (sink.\"NAME\" = stage.\"NAME\") " +
             "WHEN MATCHED AND stage.\"VERSION\" >= sink.\"VERSION\" " +
             "THEN UPDATE SET sink.\"ID\" = stage.\"ID\",sink.\"NAME\" = stage.\"NAME\",sink.\"AMOUNT\" = stage.\"AMOUNT\",sink.\"BIZ_DATE\" = stage.\"BIZ_DATE\",sink.\"DIGEST\" = stage.\"DIGEST\",sink.\"VERSION\" = stage.\"VERSION\"," +
@@ -451,6 +451,18 @@ public class NontemporalDeltaMergeTest extends NontemporalDeltaTest
         return SnowflakeTestArtifacts.expectedMetadataTableIngestQueryWithUpperCase;
     }
 
+    @Override
+    protected String getExpectedMetadataTableIngestQueryWithAdditionalMetadata()
+    {
+        return SnowflakeTestArtifacts.expectedMetadataTableIngestQueryWithAdditionalMetadata;
+    }
+
+    @Override
+    protected String getExpectedMetadataTableIngestQueryWithAdditionalMetadataWithUpperCase()
+    {
+        return SnowflakeTestArtifacts.expectedMetadataTableIngestQueryWithAdditionalMetadataWithUpperCase;
+    }
+
     protected String getExpectedMetadataTableCreateQuery()
     {
         return SnowflakeTestArtifacts.expectedMetadataTableCreateQuery;
@@ -464,10 +476,21 @@ public class NontemporalDeltaMergeTest extends NontemporalDeltaTest
     protected String getExpectedMetadataTableIngestQueryWithStagingFilters(String stagingFilters)
     {
         return "INSERT INTO batch_metadata " +
-            "(\"table_name\", \"table_batch_id\", \"batch_start_ts_utc\", \"batch_end_ts_utc\", \"batch_status\", \"staging_filters\") " +
+            "(\"table_name\", \"table_batch_id\", \"batch_start_ts_utc\", \"batch_end_ts_utc\", \"batch_status\", \"batch_source_info\") " +
             "(SELECT 'main',(SELECT COALESCE(MAX(batch_metadata.\"table_batch_id\"),0)+1 FROM batch_metadata as batch_metadata " +
             "WHERE UPPER(batch_metadata.\"table_name\") = 'MAIN')," +
             "'2000-01-01 00:00:00.000000',SYSDATE(),'DONE'," +
             String.format("PARSE_JSON('%s'))", stagingFilters);
+    }
+
+    protected String getExpectedMetadataTableIngestQueryWithStagingFiltersAndAdditionalMetadata(String stagingFilters)
+    {
+        return "INSERT INTO batch_metadata " +
+            "(\"table_name\", \"table_batch_id\", \"batch_start_ts_utc\", \"batch_end_ts_utc\", \"batch_status\", \"batch_source_info\", \"additional_metadata\") " +
+            "(SELECT 'main',(SELECT COALESCE(MAX(batch_metadata.\"table_batch_id\"),0)+1 FROM batch_metadata as batch_metadata " +
+            "WHERE UPPER(batch_metadata.\"table_name\") = 'MAIN')," +
+            "'2000-01-01 00:00:00.000000',SYSDATE(),'DONE'," +
+            String.format("PARSE_JSON('%s'),", stagingFilters) +
+            "PARSE_JSON('{\"watermark\":\"my_watermark_value\"}'))";
     }
 }

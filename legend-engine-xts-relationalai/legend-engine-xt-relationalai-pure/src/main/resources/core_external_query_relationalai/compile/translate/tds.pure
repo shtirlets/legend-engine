@@ -1,15 +1,15 @@
-import meta::rel::compile::*;
-import meta::rel::compile::ir::*;
-import meta::rel::compile::ir::tds::*;
-import meta::rel::compile::substitution::*;
-import meta::rel::compile::utils::*;
-import meta::rel::metamodel::*;
-import meta::rel::metamodel::utils::*;
-import meta::rel::trace::*;
-import meta::rel::utils::*;
+import meta::external::store::rel::compile::*;
+import meta::external::store::rel::compile::ir::*;
+import meta::external::store::rel::compile::ir::tds::*;
+import meta::external::store::rel::compile::substitution::*;
+import meta::external::store::rel::compile::utils::*;
+import meta::external::store::rel::metamodel::*;
+import meta::external::store::rel::metamodel::utils::*;
+import meta::external::store::rel::trace::*;
+import meta::external::store::rel::utils::*;
 
-function meta::rel::compile::tds::compile(
-  join: Join[1], 
+function meta::external::store::rel::compile::tds::compile(
+  join: PExprTDSJoin[1],
   substitution: VariableSubstitution[1],
   mapping: ColumnAccessRewrite[1],
   state: CompilationState[1],
@@ -25,7 +25,7 @@ function meta::rel::compile::tds::compile(
         ->compile($substitution, $mapping, $leftState, $newTrace)
         ->andThen({rightState: CompilationState[1] |
           let right = $rightState.current->toOne();
-          
+
           let leftVar = $join.condition->variables()->at(0);
           let rightVar = $join.condition->variables()->at(1);
 
@@ -60,9 +60,23 @@ function meta::rel::compile::tds::compile(
                 )
               );
 
-              let projections = 
+              /*
+               * Filter the columns originating from the left and right expression.
+               */
+              let filteredLeftColumns =
                 $leftState.cols.names
-                  ->map({col: String[1] |
+                  ->filter(name: String[1] |
+                     $join.columnNames->isEmpty() || $join.columnNames->contains($name)
+                  );
+              let filteredRightColumns =
+                $rightState.cols.names
+                  ->filter(name: String[1] |
+                     $join.columnNames->isEmpty() || $join.columnNames->contains($name)
+                  );
+
+              let projections =
+                $filteredLeftColumns
+                  ->map(col: String[1] |
                     def(
                       $target
                         ->appl(label($col)),
@@ -73,11 +87,11 @@ function meta::rel::compile::tds::compile(
                       ]
                       ->product()
                       ->from(vars(['i', 'k']))
-                    );
-                  })
+                    )
+                  )
                   ->concatenate(
-                    $rightState.cols.names
-                      ->map({col: String[1] |
+                    $filteredRightColumns
+                      ->map(col: String[1] |
                         def(
                           $target
                             ->appl(label($col)),
@@ -88,13 +102,13 @@ function meta::rel::compile::tds::compile(
                           ]
                           ->product()
                           ->from(vars(['i', 'k']))
-                        );
-                      })
+                        )
+                      )
                   );
 
               ^$joinedState(
                 program=$joinedState.program->with($joinRule->concatenate($projections)),
-                cols=columns($leftState.cols.names->concatenate($rightState.cols.names)),
+                cols=columns($filteredLeftColumns->concatenate($filteredRightColumns)),
                 current=rel($target)
               );
             });
@@ -102,8 +116,8 @@ function meta::rel::compile::tds::compile(
     });
 }
 
-function meta::rel::compile::tds::compile(
-  filter: TDSFilter[1],
+function meta::external::store::rel::compile::tds::compile(
+  filter: PExprTDSFilter[1],
   substitution: VariableSubstitution[1],
   rewrite: ColumnAccessRewrite[1],
   state: CompilationState[1],
@@ -115,7 +129,7 @@ function meta::rel::compile::tds::compile(
     ->andThen({parentState: CompilationState[1] |
       let parent = $parentState.current->toOne();
       let vx = var('x');
-      
+
       $filter.predicate
         ->compile(
           $substitution,
@@ -140,7 +154,7 @@ function meta::rel::compile::tds::compile(
           let vc = var('c');
 
           let head = rel($table);
-          let rule = 
+          let rule =
             $head
               ->appl([$vc, $vx])
               ->def([

@@ -21,6 +21,7 @@ import org.eclipse.collections.impl.factory.Lists;
 import org.finos.legend.engine.functionActivator.deployment.DeploymentManager;
 import org.finos.legend.engine.protocol.functionActivator.deployment.FunctionActivatorArtifact;
 import org.finos.legend.engine.language.snowflakeApp.api.SnowflakeAppDeploymentTool;
+import org.finos.legend.engine.protocol.functionActivator.deployment.FunctionActivatorDeploymentConfiguration;
 import org.finos.legend.engine.protocol.snowflakeApp.deployment.SnowflakeAppArtifact;
 import org.finos.legend.engine.protocol.snowflakeApp.deployment.SnowflakeAppDeploymentConfiguration;
 import org.finos.legend.engine.protocol.snowflakeApp.deployment.SnowflakeAppContent;
@@ -70,6 +71,11 @@ public class SnowflakeAppDeploymentManager implements DeploymentManager<Snowflak
     {
         this.planExecutor = planExecutor;
         connectionManager = ((RelationalStoreState)planExecutor.getExtraExecutors().select(c -> c instanceof RelationalStoreExecutor).getFirst().getStoreState()).getRelationalExecutor().getConnectionManager();
+    }
+
+    public List<SnowflakeAppDeploymentConfiguration> selectConfig(List<FunctionActivatorDeploymentConfiguration> availableConfigs)
+    {
+        return org.eclipse.collections.api.factory.Lists.mutable.withAll(availableConfigs).selectInstancesOf(SnowflakeAppDeploymentConfiguration.class);
     }
 
     @Override
@@ -146,7 +152,7 @@ public class SnowflakeAppDeploymentManager implements DeploymentManager<Snowflak
     public MutableList<String> generateStatements(String catalogName, SnowflakeAppContent content)
     {
         MutableList<String> statements = Lists.mutable.empty();
-        statements.add(String.format("CREATE OR REPLACE SECURE FUNCTION %S.%S.%s() RETURNS TABLE (%s) as $$ %s $$;", catalogName, deploymentSchema, content.applicationName, content.functionArguments, content.sqlExpressions.getFirst(), content.description));
+        statements.add(String.format("CREATE OR REPLACE SECURE FUNCTION %S.%S.%s", catalogName, deploymentSchema, content.sqlExpressions.getFirst()));
         return statements;
     }
 

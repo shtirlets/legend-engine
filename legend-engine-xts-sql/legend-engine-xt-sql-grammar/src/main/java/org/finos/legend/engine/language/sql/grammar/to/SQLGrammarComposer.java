@@ -34,7 +34,15 @@ public class SQLGrammarComposer
             Tuples.pair(ComparisonOperator.LESS_THAN_OR_EQUAL, "<="),
             Tuples.pair(ComparisonOperator.GREATER_THAN_OR_EQUAL, ">="),
             Tuples.pair(ComparisonOperator.IS_DISTINCT_FROM, "IS DISTINCT FROM"),
-            Tuples.pair(ComparisonOperator.IS_NOT_DISTINCT_FROM, "IS NOT DISTINCT FROM")
+            Tuples.pair(ComparisonOperator.IS_NOT_DISTINCT_FROM, "IS NOT DISTINCT FROM"),
+            Tuples.pair(ComparisonOperator.REGEX_MATCH, "~"),
+            Tuples.pair(ComparisonOperator.REGEX_MATCH_CI, "~*"),
+            Tuples.pair(ComparisonOperator.REGEX_NO_MATCH, "!~"),
+            Tuples.pair(ComparisonOperator.REGEX_NO_MATCH_CI, "!~*"),
+            Tuples.pair(ComparisonOperator.LIKE, "~~"),
+            Tuples.pair(ComparisonOperator.ILIKE, "~~*"),
+            Tuples.pair(ComparisonOperator.NOT_LIKE, "!~~"),
+            Tuples.pair(ComparisonOperator.NOT_ILIKE, "!~~*")
     );
     private final MutableMap<LogicalBinaryType, String> binaryComparator = UnifiedMap.newMapWith(
             Tuples.pair(LogicalBinaryType.AND, "AND"),
@@ -87,7 +95,7 @@ public class SQLGrammarComposer
             @Override
             public String visit(AliasedRelation val)
             {
-                return visit(val.relation) + " AS " + val.alias;
+                return visit(val.relation) + " AS " + quoteIfNeeded(val.alias);
             }
 
             @Override
@@ -105,6 +113,7 @@ public class SQLGrammarComposer
                 String orderBy = val.orderBy != null && !val.orderBy.isEmpty()
                         ? " ORDER BY " + visit(val.orderBy, ", ")
                         : "";
+
                 return String.join(".", val.name.parts) + "(" + args + orderBy + ")" + group + window;
             }
 
@@ -170,6 +179,7 @@ public class SQLGrammarComposer
                 String left = val.left.accept(this);
                 String right = val.right.accept(this);
                 String operator = comparator.get(val.operator);
+
                 if (operator == null)
                 {
                     throw new IllegalArgumentException("Unknown operator: " + val.operator);
@@ -212,9 +222,15 @@ public class SQLGrammarComposer
             }
 
             @Override
-            public String visit(ParameterExpression val)
+            public String visit(PositionalParameterExpression val)
             {
                 return "$" + val.index;
+            }
+
+            @Override
+            public String visit(ParameterPlaceholderExpression val)
+            {
+                return "?";
             }
 
             @Override
@@ -415,8 +431,8 @@ public class SQLGrammarComposer
             @Override
             public String visit(QualifiedNameReference val)
             {
-                //TODO quote if needed
-                return String.join(".", val.name.parts);
+                String value = String.join(".", val.name.parts);
+                return quoteIfNeeded(value);
             }
 
             @Override
@@ -474,7 +490,7 @@ public class SQLGrammarComposer
             @Override
             public String visit(SingleColumn val)
             {
-                return val.expression.accept(this) + (val.alias == null ? "" : " AS " + val.alias);
+                return val.expression.accept(this) + (val.alias == null ? "" : " AS " + quoteIfNeeded(val.alias));
             }
 
             @Override
@@ -558,6 +574,11 @@ public class SQLGrammarComposer
                 return nodes.stream()
                         .map(node -> node.accept(this))
                         .collect(Collectors.joining(delimiter));
+            }
+
+            private String quoteIfNeeded(String value)
+            {
+                return value.contains(" ") ? "\"" + value + "\"" : value;
             }
         });
     }

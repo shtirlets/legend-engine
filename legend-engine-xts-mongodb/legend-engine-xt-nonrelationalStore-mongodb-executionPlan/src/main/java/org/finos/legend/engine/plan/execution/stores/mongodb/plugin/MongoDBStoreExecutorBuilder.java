@@ -14,6 +14,7 @@
 
 package org.finos.legend.engine.plan.execution.stores.mongodb.plugin;
 
+import org.eclipse.collections.api.list.MutableList;
 import org.finos.legend.engine.plan.execution.stores.StoreExecutor;
 import org.finos.legend.engine.plan.execution.stores.StoreExecutorBuilder;
 import org.finos.legend.engine.plan.execution.stores.StoreExecutorConfiguration;
@@ -21,6 +22,12 @@ import org.finos.legend.engine.plan.execution.stores.StoreType;
 
 public class MongoDBStoreExecutorBuilder implements StoreExecutorBuilder
 {
+    @Override
+    public MutableList<String> group()
+    {
+        return org.eclipse.collections.impl.factory.Lists.mutable.with("Store", "Mongo");
+    }
+
     @Override
     public StoreType getStoreType()
     {
@@ -34,14 +41,12 @@ public class MongoDBStoreExecutorBuilder implements StoreExecutorBuilder
     }
 
     @Override
-    public StoreExecutor build(StoreExecutorConfiguration storeExecutorConfiguration)
+    public MongoDBStoreExecutor build(StoreExecutorConfiguration storeExecutorConfiguration)
     {
         if (!(storeExecutorConfiguration instanceof MongoDBStoreExecutorConfiguration))
         {
             throw new IllegalStateException("Incorrect store execution configuration, expected MongoDBStoreExecutorConfiguration. Please reach out to dev team");
         }
-        MongoDBStoreExecutorConfiguration mongoDBStoreExecutorConfiguration = (MongoDBStoreExecutorConfiguration) storeExecutorConfiguration;
-        MongoDBStoreState state = new MongoDBStoreState();
-        return new MongoDBStoreExecutor(state, mongoDBStoreExecutorConfiguration);
+        return new MongoDBStoreExecutor(new MongoDBStoreState(), (MongoDBStoreExecutorConfiguration) storeExecutorConfiguration);
     }
 }

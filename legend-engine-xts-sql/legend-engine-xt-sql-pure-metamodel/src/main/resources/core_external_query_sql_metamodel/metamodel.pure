@@ -170,9 +170,13 @@ Class meta::external::query::sql::metamodel::NamedArgumentExpression extends met
   <<equality.Key>> expression: meta::external::query::sql::metamodel::Expression[1];
 }
 
-Class meta::external::query::sql::metamodel::ParameterExpression extends meta::external::query::sql::metamodel::Expression
+Class meta::external::query::sql::metamodel::PositionalParameterExpression extends meta::external::query::sql::metamodel::Expression
 {
   <<equality.Key>> index: Integer[1];
+}
+
+Class meta::external::query::sql::metamodel::ParameterPlaceholderExpression extends meta::external::query::sql::metamodel::PositionalParameterExpression
+{
 }
 
 Class meta::external::query::sql::metamodel::LikePredicate extends meta::external::query::sql::metamodel::Expression
@@ -431,7 +435,15 @@ Enum meta::external::query::sql::metamodel::ComparisonOperator
   GREATER_THAN,
   GREATER_THAN_OR_EQUAL,
   IS_DISTINCT_FROM,
-  IS_NOT_DISTINCT_FROM
+  IS_NOT_DISTINCT_FROM,
+  REGEX_MATCH,
+  REGEX_MATCH_CI,
+  REGEX_NO_MATCH,
+  REGEX_NO_MATCH_CI,
+  LIKE,
+  ILIKE,
+  NOT_LIKE,
+  NOT_ILIKE
 }
 
 Enum meta::external::query::sql::metamodel::CurrentTimeType

@@ -1,9 +1,9 @@
-import meta::rel::metamodel::render::expr::*;
-import meta::rel::metamodel::render::program::*;
-import meta::rel::metamodel::*;
+import meta::external::store::rel::metamodel::*;
+import meta::external::store::rel::metamodel::render::expr::*;
+import meta::external::store::rel::metamodel::render::program::*;
 
 
-function <<test.Test>> meta::rel::test::metamodel::render::testSimpleRendering(): Any[*] {
+function <<test.Test>> meta::external::store::rel::test::metamodel::render::testSimpleRendering(): Any[*] {
   assertEquals(
     '1',
     const(1)->renderExpr()
@@ -40,7 +40,7 @@ function <<test.Test>> meta::rel::test::metamodel::render::testSimpleRendering()
   );
 }
 
-function <<test.Test>> meta::rel::test::metamodel::render::testExprRendering(): Any[*] {
+function <<test.Test>> meta::external::store::rel::test::metamodel::render::testExprRendering(): Any[*] {
   assertEquals(
     'edge',
     rel('edge')->renderExpr()
@@ -67,11 +67,12 @@ function <<test.Test>> meta::rel::test::metamodel::render::testExprRendering(): 
 
   assertEquals(
     'exists(z: edge(x, z) and path(z, y))',
-    atom('edge', ['x', 'z'])->and(
-        atom('path', ['z', 'y'])
+    var('z')
+      ->exists(
+        atom('edge', ['x', 'z'])->and(
+            atom('path', ['z', 'y'])
+          )
       )
-      ->abstract('z')
-      ->exists()
       ->renderExpr()
   );
 
@@ -92,14 +93,14 @@ function <<test.Test>> meta::rel::test::metamodel::render::testExprRendering(): 
 }
 
 
-function <<test.Test>> meta::rel::test::metamodel::render::testDefRendering(): Any[*] {
+function <<test.Test>> meta::external::store::rel::test::metamodel::render::testDefRendering(): Any[*] {
   assertEquals(
     'def edge = {(1, 2); (2, 3)}',
     def(rel('edge'), relation([
       tuple([const(1), const(2)]),
       tuple([const(2), const(3)])
     ]))
-    ->render()
+    ->render(true)
   );
 
   assertEquals(
@@ -107,7 +108,7 @@ function <<test.Test>> meta::rel::test::metamodel::render::testDefRendering(): A
     def(atom('path', ['x', 'y']), [
       atom('edge', ['x', 'y'])
     ])
-    ->render()
+    ->render(true)
   );
 
   assertEquals(
@@ -117,7 +118,7 @@ function <<test.Test>> meta::rel::test::metamodel::render::testDefRendering(): A
         atom('path', ['z', 'y'])
       )->from('z')
     ])
-    ->render()
+    ->render(true)
   );
 
   assertEquals(
@@ -128,19 +129,19 @@ function <<test.Test>> meta::rel::test::metamodel::render::testDefRendering(): A
         tuple([const('Jane')])
       ])
     ])
-    ->render()
+    ->render(true)
   );
 }
 
-function <<test.Test>> meta::rel::test::metamodel::render::testICRendering(): Any[*] {
+function <<test.Test>> meta::external::store::rel::test::metamodel::render::testICRendering(): Any[*] {
   assertEquals(
-    'ic test_ic {\n' + 
-      'employee(_, name) implies String(name)\n' + 
+    'ic test_ic {\n' +
+      'employee(_, name) implies String(name)\n' +
     '}',
     ic('test_ic', [
       atom('employee', [dontCare(), var('name')])
       ->implies(atom('String', ['name']))
     ])
-    ->render()
+    ->render(true)
   );
 }

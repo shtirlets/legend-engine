@@ -1,6 +1,0 @@
-type Firm {
-  legalName: String!
-  employees: [Person!]!
-  addresses: [Address!]!
-  count: Int!
-}

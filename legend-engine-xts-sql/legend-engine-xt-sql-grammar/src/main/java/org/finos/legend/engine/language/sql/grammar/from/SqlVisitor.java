@@ -41,6 +41,18 @@ class SqlVisitor extends SqlBaseParserBaseVisitor<Node>
 {
     private static final Pattern LITERAL_VALUE_PATTERN = Pattern.compile("(([\\+-]?[0-9]+)\\s([year|years|month|months|week|weeks|day|days|hour|hours|minute|minutes|second|seconds]+))+");
 
+    private int positionalIndex = 1;
+
+    private SqlVisitor()
+    {
+        //here to ensure static method below used, as not safe to reuse instance
+    }
+
+    public static Node process(ParserRuleContext ctx)
+    {
+        return ctx.accept(new SqlVisitor());
+    }
+
     @Override
     public Node visitSingleStatement(SqlBaseParser.SingleStatementContext context)
     {
@@ -1671,13 +1683,19 @@ class SqlVisitor extends SqlBaseParserBaseVisitor<Node>
     @Override
     public Node visitParameterPlaceholder(SqlBaseParser.ParameterPlaceholderContext context)
     {
-        return unsupported();
+        ParameterPlaceholderExpression parameterExpression = new ParameterPlaceholderExpression();
+        parameterExpression.index = positionalIndex++;
+
+        return parameterExpression;
     }
 
     @Override
     public Node visitPositionalParameter(SqlBaseParser.PositionalParameterContext context)
     {
-        return unsupported();
+        PositionalParameterExpression parameterExpression = new PositionalParameterExpression();
+        parameterExpression.index = Integer.parseInt(context.integerLiteral().getText());
+
+        return parameterExpression;
     }
 
     @Override
@@ -1878,6 +1896,22 @@ class SqlVisitor extends SqlBaseParserBaseVisitor<Node>
                 return ComparisonOperator.GREATER_THAN;
             case SqlBaseLexer.GTE:
                 return ComparisonOperator.GREATER_THAN_OR_EQUAL;
+            case SqlBaseLexer.REGEX_MATCH:
+                return ComparisonOperator.REGEX_MATCH;
+            case SqlBaseLexer.REGEX_MATCH_CI:
+                return ComparisonOperator.REGEX_MATCH_CI;
+            case SqlBaseLexer.REGEX_NO_MATCH:
+                return ComparisonOperator.REGEX_NO_MATCH;
+            case SqlBaseLexer.REGEX_NO_MATCH_CI:
+                return ComparisonOperator.REGEX_NO_MATCH_CI;
+            case SqlBaseLexer.OP_LIKE:
+                return ComparisonOperator.LIKE;
+            case SqlBaseLexer.OP_ILIKE:
+                return ComparisonOperator.ILIKE;
+            case SqlBaseLexer.OP_NOT_LIKE:
+                return ComparisonOperator.NOT_LIKE;
+            case SqlBaseLexer.OP_NOT_ILIKE:
+                return ComparisonOperator.NOT_ILIKE;
             //TODO handle other operators
             default:
                 throw new UnsupportedOperationException("Unsupported operator: " + symbol.getText());

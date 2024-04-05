@@ -1,3 +1,0 @@
-type OtherClass {
-  stuff: String!
-}

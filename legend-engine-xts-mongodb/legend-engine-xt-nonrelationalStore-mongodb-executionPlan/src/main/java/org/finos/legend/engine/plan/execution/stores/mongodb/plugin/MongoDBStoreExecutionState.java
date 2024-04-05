@@ -14,30 +14,30 @@
 
 package org.finos.legend.engine.plan.execution.stores.mongodb.plugin;
 
-import org.eclipse.collections.api.list.MutableList;
 import org.finos.legend.engine.plan.execution.nodes.state.ExecutionState;
 import org.finos.legend.engine.plan.execution.result.Result;
 import org.finos.legend.engine.plan.execution.stores.StoreExecutionState;
 import org.finos.legend.engine.plan.execution.stores.StoreState;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.nodes.ExecutionNodeVisitor;
-import org.pac4j.core.profile.CommonProfile;
+import org.finos.legend.engine.shared.core.identity.Identity;
 
 public class MongoDBStoreExecutionState implements StoreExecutionState
 {
 
     private final MongoDBStoreState state;
-    private RuntimeContext runtimeContext;
+    private RuntimeContext runtimeContext = RuntimeContext.empty();
 
+    private MongoDBStoreExecutorConfiguration storeExecutionConfiguration;
 
-    public MongoDBStoreExecutionState(MongoDBStoreState state, RuntimeContext runtimeContext)
+    public MongoDBStoreExecutionState(MongoDBStoreState state, MongoDBStoreExecutorConfiguration storeExecutionConfiguration)
     {
         this.state = state;
-        this.runtimeContext = runtimeContext;
+        this.storeExecutionConfiguration = storeExecutionConfiguration;
     }
 
-    public MongoDBStoreExecutionState(MongoDBStoreState state)
+    public MongoDBStoreExecutorConfiguration getStoreExecutionConfiguration()
     {
-        this(state, RuntimeContext.empty());
+        return storeExecutionConfiguration;
     }
 
     @Override
@@ -47,15 +47,15 @@ public class MongoDBStoreExecutionState implements StoreExecutionState
     }
 
     @Override
-    public ExecutionNodeVisitor<Result> getVisitor(MutableList<CommonProfile> profiles, ExecutionState executionState)
+    public ExecutionNodeVisitor<Result> getVisitor(Identity identity, ExecutionState executionState)
     {
-        return new MongoDBExecutionNodeExecutor(profiles, executionState);
+        return new MongoDBExecutionNodeExecutor(identity, executionState);
     }
 
     @Override
     public StoreExecutionState copy()
     {
-        return new MongoDBStoreExecutionState(this.state, this.runtimeContext);
+        return new MongoDBStoreExecutionState(this.state, this.storeExecutionConfiguration);
     }
 
     @Override
